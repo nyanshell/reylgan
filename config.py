@@ -15,3 +15,5 @@ TWITTER_USER_TIMELINE = "%s/1.1/statuses/user_timeline.json" % TWITTER_API
 TWITTER_FOLLOWER_LIST = "%s/1.1/followers/list.json" % TWITTER_API
 TWITTER_FRIENDS_LIST = "%s/1.1/friends/list.json" % TWITTER_API
 TWITTER_USER_INFO = "%s/1.1/users/lookup.json" % TWITTER_API
+
+CRAWLER_COLDDOWN_TIME = 30
