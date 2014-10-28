@@ -31,6 +31,7 @@ parser.add_argument("-a", "--analyzer",
 def _init_queue():
     global queue
     queue = PriorityQueue()
+    queue.put((1,769779572))
     """
     add user_id from db
     queue.put((int(time.time()), user_id))
@@ -48,6 +49,7 @@ def main():
             for i in range(0, len(crawler)):
                 if not crawler[i].is_alive():
                     crawler[i] = Worker(queue)
+                    logging.info("Starting a new worker %s" % crawler[i].name)
                     crawler[i].start()
             time.sleep(5)
 

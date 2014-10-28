@@ -1,3 +1,4 @@
 requests>=2.4.3
 environment>=1.0.0
 redis>=2.10.3
+pymongo>=2.7.2

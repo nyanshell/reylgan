@@ -4,10 +4,15 @@ this module provide basic configurations
 """
 from environment import Environment
 
+
 env = Environment(USER_AGENT=str,
                   CLIENT_KEY=str,
                   CLIENT_SECRET=str,
+                  MONGODB_URL=str,
                   )
+
+assert not any(_ in env.missing for _ in ["CLIENT_KEY", "CLIENT_SECRET", 
+                                       "MONGODB_URL"])
 
 TWITTER_API = "https://api.twitter.com"
 TWITTER_OAUTH_URL = "%s/oauth2/token" % TWITTER_API
