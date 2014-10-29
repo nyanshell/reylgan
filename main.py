@@ -34,19 +34,18 @@ parser.add_argument("--debug",
 parser.add_argument("-v", "--verbose",
                     help="Print log info into terminal",
                     action="store_true")
+args = parser.parse_args()
+queue = PriorityQueue()
 
 def _init_queue():
-    global queue
-    queue = PriorityQueue()
-    queue.put((1,769779572))
     """
     add user_id from db
     queue.put((int(time.time()), user_id))
     """
     logging.info("queue initized")
 
-def main():
-    args = parser.parse_args()
+
+def main(args):
     log_level = logging.INFO
     if args.debug:
         log_level = logging.DEBUG

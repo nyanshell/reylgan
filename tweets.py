@@ -19,7 +19,6 @@ class Tweets(object):
     def __init__(self):
         self.session = requests.session()
         self.access_token = None
-        self.daemon = True
 
     def _handle_crawl_error(self):
         raise NotImplementedError
@@ -50,7 +49,7 @@ class Tweets(object):
         return wrapper
 
     @ensure_access_token
-    def get_user_timeline(self, user_id, count=20):
+    def get_user_timeline(self, user_id, count=50):
         res = self.session.get(
             "%s?user_id=%s&count=%s" % (TWITTER_USER_TIMELINE,
                                         user_id,
@@ -79,12 +78,12 @@ class Tweets(object):
             if "errors" in res:
                 # rate limited exceeded or Twitter dead
                 logging.error(res["errors"])
-                logging.info("waiting 1 hour...")
-                time.sleep(3600)
+                logging.info("waiting 15 min...")
+                time.sleep(900)
             else:
                 user_list.extend(res["users"])
                 print ([_["name"] for _ in res["users"]])
-                if "next_cursor" == -1:
+                if "next_cursor" <= 0:
                     break
                 else:
                     next_cursor = res["next_cursor"]
