@@ -19,6 +19,7 @@ class Tweets(object):
     def __init__(self):
         self.session = requests.session()
         self.access_token = None
+        self.daemon = True
 
     def _handle_crawl_error(self):
         raise NotImplementedError
@@ -61,6 +62,8 @@ class Tweets(object):
     def get_follower_list(self, user_id):
         """
         return a list of user
+        @todo for user who has over to much followers, maybe we should only
+        fetch part of them.
         """
         user_list = []
         next_cursor = -1
@@ -72,19 +75,19 @@ class Tweets(object):
                     next_cursor),
                 headers={"Authorization": "Bearer %s" % self.access_token}
                 ).json()
+
             if "errors" in res:
                 # rate limited exceeded or Twitter dead
                 logging.error(res["errors"])
                 logging.info("waiting 1 hour...")
                 time.sleep(3600)
             else:
-                from pprint import pprint
-                pprint (res)
                 user_list.extend(res["users"])
+                print ([_["name"] for _ in res["users"]])
                 if "next_cursor" == -1:
                     break
                 else:
-                    cursor = res["next_cursor"]
+                    next_cursor = res["next_cursor"]
         logging.info("fetch %s followers from user %s" % (len(user_list),
                                                           user_id))
         return user_list

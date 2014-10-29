@@ -20,9 +20,10 @@ class Worker(threading.Thread):
     While using PriorityQueue, user_id may get lost when thread crash.
     """
     def __init__(self, queue):
+        super(Worker, self).__init__()
         self.queue = queue
         self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
-        super(Worker, self).__init__()
+        self.daemon = True
 
     def _push_to_db(self, data, collect):
         """
