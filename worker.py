@@ -31,7 +31,7 @@ class Worker(threading.Thread):
         """
         logging.info(
             "pushing %d items to collection %s." % (len(data), collect))
-        db[collect].insert(data, continue_on_error=True)
+        self.db[collect].insert(data, continue_on_error=True)
 
     def run(self):
         tweets = Tweets()
@@ -54,14 +54,18 @@ class Analyzer(threading.Thread):
 
     def __init__(self, queue):
         super(Worker, self).__init__()
-        db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
+        self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
 
 
     def is_zh(self, tweet):
         pass
 
     def extract_user(self, user_list):
-        pass
+        while True:
+            """
+            @todo: sort by follower amount.
+            """
+            cursor = self.db["users"].find()
     
     def run(self):
         pass

@@ -83,7 +83,7 @@ class Tweets(object):
             else:
                 user_list.extend(res["users"])
                 print ([_["name"] for _ in res["users"]])
-                if "next_cursor" <= 0:
+                if res["next_cursor"] <= 0:
                     break
                 else:
                     next_cursor = res["next_cursor"]

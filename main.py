@@ -50,26 +50,20 @@ def main(args):
     if args.debug:
         log_level = logging.DEBUG
     logging.basicConfig(filename=None if args.verbose else "reylgan.log",
-                        #format="%(asctime)s:%(levelname)s: %(message)s",
                         level=log_level)
     if args.worker:
         _init_queue()
-        try:
-            crawler = [Worker(queue) for _ in range(0, int(args.worker))]
-            [c.start() for c in crawler]
-            logging.info("Started %s crawlers." % len(crawler))
-            while True:
-                for i in range(0, len(crawler)):
-                    if not crawler[i].is_alive():
-                        crawler[i] = Worker(queue)
-                        logging.info(
-                            "Starting a new worker %s" % crawler[i].name)
-                        crawler[i].start()
-                time.sleep(5)
-        except KeyboardInterrupt:
-            #for c in crawler:
-            #    c.kill_received = True
-            sys.exit(0)
+        crawler = [Worker(queue) for _ in range(0, int(args.worker))]
+        [c.start() for c in crawler]
+        logging.info("Started %s crawlers." % len(crawler))
+        while True:
+            for i in range(0, len(crawler)):
+                if not crawler[i].is_alive():
+                    crawler[i] = Worker(queue)
+                    logging.info(
+                        "Starting a new worker %s" % crawler[i].name)
+                    crawler[i].start()
+            time.sleep(5)
 
     """
     raise analyzer
