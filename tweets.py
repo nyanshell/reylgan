@@ -83,6 +83,9 @@ class Tweets(object):
             else:
                 user_list.extend(res["users"])
                 print ([_["name"] for _ in res["users"]])
+                # @todo remove after test
+                if len(user_list) > 20:
+                    break
                 if res["next_cursor"] <= 0:
                     break
                 else:

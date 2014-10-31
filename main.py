@@ -16,6 +16,7 @@ else:
     from Queue import PriorityQueue
 
 from worker import Worker
+from worker import Analyzer
 
 parser = argparse.ArgumentParser(
     description="Yet another tweet analyzer suite")
@@ -24,9 +25,6 @@ parser.add_argument("-w", "--worker",
                     type=int)
 parser.add_argument("-f", "--frontend",
                     help="amount of frontend worker",
-                    type=int)
-parser.add_argument("-a", "--analyzer",
-                    help="amount of analyzer.",
                     type=int)
 parser.add_argument("--debug",
                     help="Debug model logging",
@@ -53,6 +51,8 @@ def main(args):
                         level=log_level)
     if args.worker:
         _init_queue()
+        analyzer = Analyzer(queue)
+        analyzer.start()
         crawler = [Worker(queue) for _ in range(0, int(args.worker))]
         [c.start() for c in crawler]
         logging.info("Started %s crawlers." % len(crawler))

@@ -9,9 +9,11 @@ import time
 import logging
 
 import pymongo
+from pymongo.errors import DuplicateKeyError
 
 from tweets import Tweets
 from config import *
+
 
 class Worker(threading.Thread):
     """
@@ -31,12 +33,16 @@ class Worker(threading.Thread):
         """
         logging.info(
             "pushing %d items to collection %s." % (len(data), collect))
-        self.db[collect].insert(data, continue_on_error=True)
+        try:
+            self.db[collect].insert(data, continue_on_error=True)
+        except  DuplicateKeyError as err:
+            logging.warning(err)
 
     def run(self):
         tweets = Tweets()
         while True:
             user_id = self.queue.get()[-1]
+            logging.info("fetching user %s." % user_id)
             """
             print (self.name, user_id)
             pull tweet, user's follower & friends
@@ -53,19 +59,24 @@ class Worker(threading.Thread):
 class Analyzer(threading.Thread):
 
     def __init__(self, queue):
-        super(Worker, self).__init__()
+        super(Analyzer, self).__init__()
         self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
-
+        self.queue = queue
+        self.daemon = True
 
     def is_zh(self, tweet):
         pass
 
-    def extract_user(self, user_list):
-        while True:
-            """
-            @todo: sort by follower amount.
-            """
-            cursor = self.db["users"].find()
-    
     def run(self):
-        pass
+        logging.info("analyzer started")
+        while True:
+            print ("size", self.queue.qsize())
+            cursor = self.db["users"].find().sort("followers_count",
+                                                  pymongo.DESCENDING)
+            for user in cursor:
+                """
+                @todo: specify user using chinese
+                """
+                logging.info("putting user %s to queue." % user["id"])
+                self.queue.put((time.time(), user["id"]))
+
