@@ -8,12 +8,18 @@ import threading
 import time
 import logging
 import re
+import sys
 
 import pymongo
 from pymongo.errors import DuplicateKeyError
 
 from tweets import Tweets
 from config import *
+
+if sys.version_info.major > 2:
+    text_type = str
+else:
+    text_type = unicode
 
 
 class Worker(threading.Thread):
@@ -62,7 +68,7 @@ PUNCT_STR = ("([!@#\$%\^\&\*\(\)_\+\-=<>\/\:\"\';\|\\~!;,\.\?"
              "「」～！…（）；：，。？． ]+)")
 REPLACE_IRRELEVANT_REGEX = re.compile("|".join([HTTP_REGEX_STR,
                                                 PUNCT_STR,
-                                                '([a-zA-Z0-9]+)']))
+                                                '([0-9]+)']))
 
 class Analyzer(threading.Thread):
     def __init__(self, queue):
@@ -71,48 +77,34 @@ class Analyzer(threading.Thread):
         self.queue = queue
         self.daemon = True
 
-    def detect_chinese(tweets, rate=0.7):
+    @staticmethod
+    def detect_chinese(tweets, rate=0.5):
         """
         @todo: use a classifier model instead
         """
-        def detect(rs):
-            if isinstance(rs, unicode):
-                s = rs
-            else:
-                s = rs.decode('utf-8')
-            s = HTTP_SUB_REGEX.sub('', s)
-            s = PUNCT_CHAR_SUB.sub('', s)
-            tot_chr = len( EN_WORDS_SUB_REGEX.findall(s))
-            s = EN_WORDS_SUB_REGEX.sub('', s)
-            zh_chr = 0
-            for c in s:
-                tot_chr += 1
-                # normal chinese character range [19968, 40908]
-                if 19968 <= ord(c) <= 40908:
-                    zh_chr += 1
-                    rate = 0.00000
-                    if tot_chr != 0:
-                        rate = float(zh_chr)/tot_chr
-                    return rate 
+        def detect(text):
+            s = REPLACE_IRRELEVANT_REGEX.sub(
+                "",
+                (text if isinstance(text, text_type)
+                 else text.decode('utf-8')))
+            # normal chinese character range [19968, 40908]
+            cnt = sum([1 for _ in s if 19968 <= ord(_) <= 40908 ])
+            return cnt/float(len(text))
 
-        ans = 0.0000
-        cnt = len(tweets)
-        assert cnt
-        if tweet[ 'lang' ] == 'zh':
-            ans += 1.000
-        elif tweet[ 'lang' ] == 'ja': # fix twitter's own language detect
-            tr = zhdetect( tweet[ 'text' ] )
-            ans += tr
-        if cnt > 0:
-            ans /= float(cnt)
-            if ans >= rate:
-                return True
-        return False
+        ans = 0
+        assert len(tweets)
+        for tweet in iter(tweets):
+            if tweet['lang'] is 'zh': ans += 1.0
+            # fix twitter's own language detect
+            elif tweet['lang'] is 'ja':
+                ans += detect(tweet['text'])
+        ans /= float(len(tweets))
+        return True if ans >= rate else False
 
     def run(self):
         logging.info("analyzer started")
         while True:
-            print ("size", self.queue.qsize())
+            logging.info("%s user_id in queue" % self.queue.qsize())
             cursor = self.db["users"].find(
                 {"is_zh_user": True}).sort("followers_count",
                                            pymongo.DESCENDING)
