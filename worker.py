@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import threading
 import time
 import logging
+import re
 
 import pymongo
 from pymongo.errors import DuplicateKeyError
@@ -56,27 +57,69 @@ class Worker(threading.Thread):
             self.queue.put((int(time.time()), user_id))
 
 
-class Analyzer(threading.Thread):
+HTTP_REGEX_STR = '(https?://[\S]+)'
+PUNCT_STR = ("([!@#\$%\^\&\*\(\)_\+\-=<>\/\:\"\';\|\\~!;,\.\?"
+             "「」～！…（）；：，。？． ]+)")
+REPLACE_IRRELEVANT_REGEX = re.compile("|".join([HTTP_REGEX_STR,
+                                                PUNCT_STR,
+                                                '([a-zA-Z0-9]+)']))
 
+class Analyzer(threading.Thread):
     def __init__(self, queue):
         super(Analyzer, self).__init__()
         self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
         self.queue = queue
         self.daemon = True
 
-    def is_zh(self, tweet):
-        pass
+    def detect_chinese(tweets, rate=0.7):
+        """
+        @todo: use a classifier model instead
+        """
+        def detect(rs):
+            if isinstance(rs, unicode):
+                s = rs
+            else:
+                s = rs.decode('utf-8')
+            s = HTTP_SUB_REGEX.sub('', s)
+            s = PUNCT_CHAR_SUB.sub('', s)
+            tot_chr = len( EN_WORDS_SUB_REGEX.findall(s))
+            s = EN_WORDS_SUB_REGEX.sub('', s)
+            zh_chr = 0
+            for c in s:
+                tot_chr += 1
+                # normal chinese character range [19968, 40908]
+                if 19968 <= ord(c) <= 40908:
+                    zh_chr += 1
+                    rate = 0.00000
+                    if tot_chr != 0:
+                        rate = float(zh_chr)/tot_chr
+                    return rate 
+
+        ans = 0.0000
+        cnt = len(tweets)
+        assert cnt
+        if tweet[ 'lang' ] == 'zh':
+            ans += 1.000
+        elif tweet[ 'lang' ] == 'ja': # fix twitter's own language detect
+            tr = zhdetect( tweet[ 'text' ] )
+            ans += tr
+        if cnt > 0:
+            ans /= float(cnt)
+            if ans >= rate:
+                return True
+        return False
 
     def run(self):
         logging.info("analyzer started")
         while True:
             print ("size", self.queue.qsize())
-            cursor = self.db["users"].find().sort("followers_count",
-                                                  pymongo.DESCENDING)
+            cursor = self.db["users"].find(
+                {"is_zh_user": True}).sort("followers_count",
+                                           pymongo.DESCENDING)
             for user in cursor:
-                """
-                @todo: specify user using chinese
-                """
                 logging.info("putting user %s to queue." % user["id"])
                 self.queue.put((time.time(), user["id"]))
 
+            cursor = self.db["users"].find(
+                {"is_zh_user": False}).sort("followers_count",
+                                           pymongo.DESCENDING)

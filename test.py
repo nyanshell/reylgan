@@ -26,6 +26,13 @@ def test_analyzer():
     analyzer.start()
 
 
+def test_irrelevant_sub_regex():
+    from worker import REPLACE_IRRELEVANT_REGEX
+    s = "喵！喵1喵123喵喵喵!@#$%^&*abcdesAD1234http://tw.it"
+    print (REPLACE_IRRELEVANT_REGEX.sub('', s))
+
+
 if __name__ == "__main__":
-    test_tweet_fetch()
+    # test_tweet_fetch()
     # test_analyzer()
+    test_irrelevant_sub_regex()
