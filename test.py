@@ -20,10 +20,10 @@ def test_analyzer():
     import logging
     from queue import PriorityQueue
     from worker import Analyzer
-    logging.basicConfig(filename=None,
-                        level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
     analyzer = Analyzer(PriorityQueue())
     analyzer.start()
+    analyzer.join()
 
 
 def test_irrelevant_sub_regex():
@@ -39,8 +39,9 @@ def test_chinese_detect():
                    {"text": "asdfasdfa", "lang": "ja"},
                    {"text": "喵喵喵喵喵喵", "lang": "ja"}]))
 
+
 if __name__ == "__main__":
     # test_tweet_fetch()
-    # test_analyzer()
+    test_analyzer()
     # test_irrelevant_sub_regex()
-    test_chinese_detect()
+    # test_chinese_detect()

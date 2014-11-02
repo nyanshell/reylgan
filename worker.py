@@ -55,9 +55,10 @@ class Worker(threading.Thread):
             pull tweet, user's follower & friends
             push em to db.
             """
-            #self._push_to_db(tweets.get_user_timeline(user_id, count=50), "tweets")
+            self._push_to_db(tweets.get_user_timeline(user_id, count=50),
+                             "tweets")
             self._push_to_db(tweets.get_follower_list(user_id), "users")
-            #self._push_to_db(tweets.get_friends_list(user_id), "users")
+            # self._push_to_db(tweets.get_friends_list(user_id), "users")
 
             time.sleep(CRAWLER_COLDDOWN_TIME)
             self.queue.put((int(time.time()), user_id))
@@ -88,30 +89,53 @@ class Analyzer(threading.Thread):
                 (text if isinstance(text, text_type)
                  else text.decode('utf-8')))
             # normal chinese character range [19968, 40908]
-            cnt = sum([1 for _ in s if 19968 <= ord(_) <= 40908 ])
+            cnt = sum([1 for _ in s if 19968 <= ord(_) <= 40908])
+            # logging.debug(" ".join([text, s, str(cnt), str(len(text))]))
             return cnt/float(len(text))
 
         ans = 0
         assert len(tweets)
         for tweet in iter(tweets):
-            if tweet['lang'] is 'zh': ans += 1.0
+            # zh-cn/zh-tw
+            if "zh" in tweet['lang']: ans += 1.0
             # fix twitter's own language detect
-            elif tweet['lang'] is 'ja':
-                ans += detect(tweet['text'])
+            elif tweet['lang'] == 'ja': ans += detect(tweet['text'])
         ans /= float(len(tweets))
+        logging.debug("chinese user confidence: %s" % ans)
         return True if ans >= rate else False
 
     def run(self):
         logging.info("analyzer started")
+        tweets = Tweets()
         while True:
             logging.info("%s user_id in queue" % self.queue.qsize())
             cursor = self.db["users"].find(
-                {"is_zh_user": True}).sort("followers_count",
-                                           pymongo.DESCENDING)
+                {"is_zh_user": {"$ne": False}}).sort("followers_count",
+                                                     pymongo.DESCENDING)
             for user in cursor:
-                logging.info("putting user %s to queue." % user["id"])
-                self.queue.put((time.time(), user["id"]))
+                if "is_zh_user" in user:
+                    logging.info("putting user %s to queue." % user["id"])
+                    self.queue.put((time.time(), user["id"]))
+                else:
+                    recent_tweets = self.db["tweets"].find(
+                        {"id": user["id"]}).limit(100)
 
-            cursor = self.db["users"].find(
-                {"is_zh_user": False}).sort("followers_count",
-                                           pymongo.DESCENDING)
+                    if recent_tweets.count() < 50:
+                        recent_tweets = tweets.get_user_timeline(
+                            user["id"], count=100, max_collect=100)
+                    else:
+                        logging.debug(
+                        "fetch recent %s tweets of user %s" % (
+                            recent_tweets.count(),
+                            user["id"]))
+                        recent_tweets = [_ for _ in recent_tweets]
+                    result = True if len(recent_tweets) >= 50 \
+                             and self.detect_chinese(recent_tweets) \
+                             else False
+                    logging.debug(
+                        "user %s detect result: %s" % (user["id"],
+                                                       result))
+                    self.db["users"].update(
+                        {"id": user["id"]},
+                        {"$set": {"is_zh_user": result}})
+

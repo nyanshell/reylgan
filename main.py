@@ -35,13 +35,6 @@ parser.add_argument("-v", "--verbose",
 args = parser.parse_args()
 queue = PriorityQueue()
 
-def _init_queue():
-    """
-    add user_id from db
-    queue.put((int(time.time()), user_id))
-    """
-    logging.info("queue initized")
-
 
 def main(args):
     log_level = logging.INFO
@@ -50,7 +43,6 @@ def main(args):
     logging.basicConfig(filename=None if args.verbose else "reylgan.log",
                         level=log_level)
     if args.worker:
-        _init_queue()
         analyzer = Analyzer(queue)
         analyzer.start()
         crawler = [Worker(queue) for _ in range(0, int(args.worker))]
@@ -63,15 +55,14 @@ def main(args):
                     logging.info(
                         "Starting a new worker %s" % crawler[i].name)
                     crawler[i].start()
+            analyzer = Analyzer(queue) if not analyzer.is_alive() \
+                       else analyzer
             time.sleep(5)
-
-    """
-    raise analyzer
-    """
-
-    """
-    raise frontend
-    """
+    if args.frontend:
+        """
+        @todo: start frontend worker
+        """
+        raise NotImplementedError
 
 
 if __name__ == "__main__":

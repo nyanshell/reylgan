@@ -49,13 +49,38 @@ class Tweets(object):
         return wrapper
 
     @ensure_access_token
-    def get_user_timeline(self, user_id, count=50):
-        res = self.session.get(
-            "%s?user_id=%s&count=%s" % (TWITTER_USER_TIMELINE,
-                                        user_id,
-                                        count),
-            headers={"Authorization": "Bearer %s" % self.access_token})
-        return res.json()
+    def get_user_timeline(self, user_id, count=50, max_collect=500):
+        """
+        https://dev.twitter.com/rest/reference/get/statuses/user_timeline
+        """
+        user_tweets = []
+        max_id_str = ""
+        while True:
+            res = self.session.get(
+                "%s?user_id=%s%s&count=%s&include_rts=1" % (
+                    TWITTER_USER_TIMELINE,
+                    user_id,
+                    max_id_str,
+                    count),
+                headers={"Authorization": "Bearer %s" % self.access_token}
+            ).json()
+            if "errors" in res:
+                # rate limited exceeded or Twitter dead
+                logging.error(res["errors"])
+                logging.info("waiting 15 min...")
+                time.sleep(900)
+            elif len(res):
+                user_tweets.extend(res)
+                print ([it["text"] for it in res])
+                if len(user_tweets) >= max_collect:
+                    break
+                else:
+                    max_id_str = "&max_id=%s" % (user_tweets[-1]["id"]-1)
+            else:
+                logging.warning("no tweets found on user %s, stop" % user_id)
+        logging.info("fetch %s tweets from user %s" % (len(user_tweets),
+                                                       user_id))
+        return user_tweets
 
     @ensure_access_token
     def get_follower_list(self, user_id):
@@ -82,8 +107,10 @@ class Tweets(object):
                 time.sleep(900)
             else:
                 user_list.extend(res["users"])
-                print ([_["name"] for _ in res["users"]])
-                # @todo remove after test
+                logging.debug(
+                    "fetched user: " +
+                    " ".join([_["name"] for _ in res["users"]]))
+                # @todo remove this limit after test
                 if len(user_list) > 20:
                     break
                 if res["next_cursor"] <= 0:
@@ -93,14 +120,6 @@ class Tweets(object):
         logging.info("fetch %s followers from user %s" % (len(user_list),
                                                           user_id))
         return user_list
-
-    @ensure_access_token
-    def get_friends_list(self, user_id):
-        res = self.session.get(
-            "%s?user_id=%s" % (TWITTER_FRIENDS_LIST,
-                               user_id),
-            headers={"Authorization": "Bearer %s" % self.access_token})
-        return res.json()
 
     @ensure_access_token
     def get_friends_list(self, user_id):
