@@ -11,6 +11,7 @@ import re
 import sys
 
 import pymongo
+import redis
 from pymongo.errors import DuplicateKeyError
 
 from tweets import Tweets
@@ -21,18 +22,12 @@ if sys.version_info.major > 2:
 else:
     text_type = unicode
 
-
 class Worker(threading.Thread):
-    """
-    @todo: Intends to use beanstalkd as queue, however beanstalkc didn't
-    support py3k yet, use queue instead.
-    While using PriorityQueue, user_id may get lost when thread crash.
-    """
-    def __init__(self, queue):
+    def __init__(self):
         super(Worker, self).__init__()
-        self.queue = queue
         self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
         self.daemon = True
+        self.redis_conn = redis.from_url(env.redis_url)
 
     def _push_to_db(self, data, collect):
         """
@@ -72,10 +67,10 @@ REPLACE_IRRELEVANT_REGEX = re.compile("|".join([HTTP_REGEX_STR,
                                                 '([0-9]+)']))
 
 class Analyzer(threading.Thread):
-    def __init__(self, queue):
+    def __init__(self):
         super(Analyzer, self).__init__()
         self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
-        self.queue = queue
+        self.redis_conn = redis.from_url(env.redis_url)
         self.daemon = True
 
     @staticmethod

@@ -63,21 +63,30 @@ class Tweets(object):
                     max_id_str,
                     count),
                 headers={"Authorization": "Bearer %s" % self.access_token}
-            ).json()
-            if "errors" in res:
-                # rate limited exceeded or Twitter dead
-                logging.error(res["errors"])
-                logging.info("waiting 15 min...")
-                time.sleep(900)
-            elif len(res):
-                user_tweets.extend(res)
-                print ([it["text"] for it in res])
-                if len(user_tweets) >= max_collect:
+            )
+            if res.status_code != 200:
+                print (res.json)
+                if res.status_code == 401:  # key not valid or locked user
+                    logging.error(res.json()["error"])
                     break
-                else:
-                    max_id_str = "&max_id=%s" % (user_tweets[-1]["id"]-1)
+                else:  # rate limited exceeded or Twitter dead
+                    logging.error(res.json()["errors"])
+                    logging.info("waiting 15 min...")
+                time.sleep(900)
             else:
-                logging.warning("no tweets found on user %s, stop" % user_id)
+                res = res.json()
+                if len(res):
+                    user_tweets.extend(res)
+                    print ([it["text"] for it in res])
+                    if len(user_tweets) >= max_collect:
+                        break
+                    else:
+                        max_id_str = "&max_id=%s" % (user_tweets[-1]["id"]-1)
+                else:
+                    logging.warning(
+                        "no tweets found on user %s, stop" % user_id)
+                    break
+
         logging.info("fetch %s tweets from user %s" % (len(user_tweets),
                                                        user_id))
         return user_tweets

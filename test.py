@@ -9,7 +9,7 @@ def test_tweet_fetch():
     import main
     from argparse import Namespace
     args = Namespace(worker=1, verbose=True, debug=True)
-    main.queue.put((1,769779572))
+    # main.queue.put((1,769779572))
     main.main(args)
 
 
@@ -18,7 +18,7 @@ def test_analyzer():
     collection users need some data before test
     """
     import logging
-    from queue import PriorityQueue
+    # from queue import PriorityQueue
     from worker import Analyzer
     logging.basicConfig(level=logging.DEBUG)
     analyzer = Analyzer(PriorityQueue())
@@ -39,9 +39,16 @@ def test_chinese_detect():
                    {"text": "asdfasdfa", "lang": "ja"},
                    {"text": "喵喵喵喵喵喵", "lang": "ja"}]))
 
+def test_redis():
+    import redis
+    from config import env
+    conn = redis.from_url(env.redis_url)
+    print (conn.keys())
+
 
 if __name__ == "__main__":
     # test_tweet_fetch()
-    test_analyzer()
+    # test_analyzer()
     # test_irrelevant_sub_regex()
     # test_chinese_detect()
+    test_redis()

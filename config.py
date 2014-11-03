@@ -9,6 +9,7 @@ env = Environment(USER_AGENT=str,
                   CLIENT_KEY=str,
                   CLIENT_SECRET=str,
                   MONGODB_URL=str,
+                  REDIS_URL=str,
                   )
 
 assert not any(_ in env.missing for _ in ["CLIENT_KEY", "CLIENT_SECRET", 
