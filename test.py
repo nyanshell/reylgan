@@ -12,6 +12,15 @@ def test_tweet_fetch():
     main.main(args)
 
 
+def test_crawler():
+    import logging
+    from worker import Worker
+    logging.basicConfig(level=logging.DEBUG)
+    worker = Worker()
+    worker.start()
+    worker.join()
+    
+
 def test_analyzer():
     """
     collection users need some data before test
@@ -45,7 +54,8 @@ def test_redis():
 
 
 if __name__ == "__main__":
-    test_tweet_fetch()
+    # test_tweet_fetch()
+    test_crawler()
     # test_analyzer()
     # test_irrelevant_sub_regex()
     # test_chinese_detect()

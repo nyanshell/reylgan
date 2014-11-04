@@ -127,8 +127,12 @@ class Analyzer(threading.Thread):
                                                      pymongo.DESCENDING)
             for user in cursor:
                 if "is_zh_user" in user:
-                    logging.info("putting user %s to queue." % user["id"])
-                    self.queue.put(user["id"])
+                    if self.queue.put(user["id"]):
+                        logging.info(
+                            "put new user %s to queue." % user["id"])
+                    else:
+                        logging.debug(
+                            "user %s already in queue." % user["id"])
                 else:
                     recent_tweets = self.db["tweets"].find(
                         {"id": user["id"]}).limit(100)
@@ -152,3 +156,5 @@ class Analyzer(threading.Thread):
                         {"id": user["id"]},
                         {"$set": {"is_zh_user": result}})
 
+            logging.info("sleep a while")
+            time.sleep(30)

@@ -23,6 +23,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-w", "--worker",
                     help="amount of crawler",
                     type=int)
+parser.add_argument("-a", "--analyzer",
+                    help="amount of analyzer",
+                    type=int)
 parser.add_argument("-f", "--frontend",
                     help="amount of frontend worker",
                     type=int)
@@ -41,27 +44,34 @@ def main(args):
         log_level = logging.DEBUG
     logging.basicConfig(filename=None if args.verbose else "reylgan.log",
                         level=log_level)
+    workers = []
     if args.worker:
-        analyzer = Analyzer()
-        analyzer.start()
-        crawler = [Worker() for _ in range(0, int(args.worker))]
-        [c.start() for c in crawler]
-        logging.info("Started %s crawlers." % len(crawler))
-        while True:
-            for i in range(0, len(crawler)):
-                if not crawler[i].is_alive():
-                    crawler[i] = Worker()
-                    logging.info(
-                        "Starting a new worker %s" % crawler[i].name)
-                    crawler[i].start()
-            analyzer = Analyzer() if not analyzer.is_alive() \
-                       else analyzer
-            time.sleep(5)
+        workers.extend([(Worker(), Worker) for _ in
+                        range(0, int(args.worker))])
+        logging.info("add %s crawlers." % len(args.worker))
+
+    if args.analyzer:
+        workers.extend([(Analyzer(), Analyzer) for _ in
+                        range(0, int(args.analyzer))])
+        logging.info("add %s analyzers." % len(args.analyzer))
+
     if args.frontend:
         """
         @todo: start frontend worker
         """
         raise NotImplementedError
+
+    [w[0].start() for w in workers]
+        
+    while True:
+        for i in range(0, len(workers)):
+            if not worker[i][0].is_alive():
+                    worker[i][0] = worker[i][1]()
+                    logging.info(
+                        "Starting a new worker %s" % worker[i][0].name)
+                    worker[i][0].start()
+        time.sleep(5)
+
 
 
 if __name__ == "__main__":
