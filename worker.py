@@ -22,12 +22,30 @@ if sys.version_info.major > 2:
 else:
     text_type = unicode
 
+class RedisQueueSet(object):
+
+    def __init__(self):
+        self.redis_conn = redis.from_url(env.redis_url)
+
+    def put(self, s):
+        return self.redis_conn.zadd(REDIS_QUEUE, s, time.time())
+
+    def pop(self):
+        pipe = self.redis_conn.pipeline(transaction=True)
+        pipe.zrange(REDIS_QUEUE, 0, 0)
+        pipe.zremrangebyrank(REDIS_QUEUE, 0, 0)
+        return int(pipe.execute()[0][0])
+
+    def size(self):
+        return self.redis_conn.zcard(REDIS_QUEUE)
+
+
 class Worker(threading.Thread):
     def __init__(self):
         super(Worker, self).__init__()
         self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
         self.daemon = True
-        self.redis_conn = redis.from_url(env.redis_url)
+        self.queue = RedisQueueSet()
 
     def _push_to_db(self, data, collect):
         """
@@ -43,7 +61,7 @@ class Worker(threading.Thread):
     def run(self):
         tweets = Tweets()
         while True:
-            user_id = self.queue.get()[-1]
+            user_id = self.queue.pop()
             logging.info("fetching user %s." % user_id)
             """
             print (self.name, user_id)
@@ -56,7 +74,7 @@ class Worker(threading.Thread):
             # self._push_to_db(tweets.get_friends_list(user_id), "users")
 
             time.sleep(CRAWLER_COLDDOWN_TIME)
-            self.queue.put((int(time.time()), user_id))
+            self.queue.put(user_id)
 
 
 HTTP_REGEX_STR = '(https?://[\S]+)'
@@ -70,8 +88,8 @@ class Analyzer(threading.Thread):
     def __init__(self):
         super(Analyzer, self).__init__()
         self.db = pymongo.MongoClient(env.mongodb_url)["reylgan"]
-        self.redis_conn = redis.from_url(env.redis_url)
         self.daemon = True
+        self.queue = RedisQueueSet()
 
     @staticmethod
     def detect_chinese(tweets, rate=0.5):
@@ -103,14 +121,14 @@ class Analyzer(threading.Thread):
         logging.info("analyzer started")
         tweets = Tweets()
         while True:
-            logging.info("%s user_id in queue" % self.queue.qsize())
+            logging.info("%s user_id in queue" % self.queue.size())
             cursor = self.db["users"].find(
                 {"is_zh_user": {"$ne": False}}).sort("followers_count",
                                                      pymongo.DESCENDING)
             for user in cursor:
                 if "is_zh_user" in user:
                     logging.info("putting user %s to queue." % user["id"])
-                    self.queue.put((time.time(), user["id"]))
+                    self.queue.put(user["id"])
                 else:
                     recent_tweets = self.db["tweets"].find(
                         {"id": user["id"]}).limit(100)

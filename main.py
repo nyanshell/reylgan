@@ -33,7 +33,6 @@ parser.add_argument("-v", "--verbose",
                     help="Print log info into terminal",
                     action="store_true")
 args = parser.parse_args()
-queue = PriorityQueue()
 
 
 def main(args):
@@ -43,19 +42,19 @@ def main(args):
     logging.basicConfig(filename=None if args.verbose else "reylgan.log",
                         level=log_level)
     if args.worker:
-        analyzer = Analyzer(queue)
+        analyzer = Analyzer()
         analyzer.start()
-        crawler = [Worker(queue) for _ in range(0, int(args.worker))]
+        crawler = [Worker() for _ in range(0, int(args.worker))]
         [c.start() for c in crawler]
         logging.info("Started %s crawlers." % len(crawler))
         while True:
             for i in range(0, len(crawler)):
                 if not crawler[i].is_alive():
-                    crawler[i] = Worker(queue)
+                    crawler[i] = Worker()
                     logging.info(
                         "Starting a new worker %s" % crawler[i].name)
                     crawler[i].start()
-            analyzer = Analyzer(queue) if not analyzer.is_alive() \
+            analyzer = Analyzer() if not analyzer.is_alive() \
                        else analyzer
             time.sleep(5)
     if args.frontend:

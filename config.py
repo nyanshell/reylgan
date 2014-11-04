@@ -23,3 +23,4 @@ TWITTER_FRIENDS_LIST = "%s/1.1/friends/list.json" % TWITTER_API
 TWITTER_USER_INFO = "%s/1.1/users/lookup.json" % TWITTER_API
 
 CRAWLER_COLDDOWN_TIME = 30
+REDIS_QUEUE = "reylgan-queue"

@@ -9,7 +9,6 @@ def test_tweet_fetch():
     import main
     from argparse import Namespace
     args = Namespace(worker=1, verbose=True, debug=True)
-    # main.queue.put((1,769779572))
     main.main(args)
 
 
@@ -18,10 +17,9 @@ def test_analyzer():
     collection users need some data before test
     """
     import logging
-    # from queue import PriorityQueue
     from worker import Analyzer
     logging.basicConfig(level=logging.DEBUG)
-    analyzer = Analyzer(PriorityQueue())
+    analyzer = Analyzer()
     analyzer.start()
     analyzer.join()
 
@@ -47,8 +45,8 @@ def test_redis():
 
 
 if __name__ == "__main__":
-    # test_tweet_fetch()
+    test_tweet_fetch()
     # test_analyzer()
     # test_irrelevant_sub_regex()
     # test_chinese_detect()
-    test_redis()
+    # test_redis()
