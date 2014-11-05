@@ -48,12 +48,12 @@ def main(args):
     if args.worker:
         workers.extend([(Worker(), Worker) for _ in
                         range(0, int(args.worker))])
-        logging.info("add %s crawlers." % len(args.worker))
+        logging.info("add %s crawlers." % args.worker)
 
     if args.analyzer:
         workers.extend([(Analyzer(), Analyzer) for _ in
                         range(0, int(args.analyzer))])
-        logging.info("add %s analyzers." % len(args.analyzer))
+        logging.info("add %s analyzers." % args.analyzer)
 
     if args.frontend:
         """
@@ -64,15 +64,15 @@ def main(args):
     [w[0].start() for w in workers]
         
     while True:
-        for i in range(0, len(workers)):
-            if not worker[i][0].is_alive():
-                    worker[i][0] = worker[i][1]()
+        for i, worker in enumerate(workers):
+            if not worker[0].is_alive():
+                    worker[0] = worker[1]()
                     logging.info(
-                        "Starting a new worker %s" % worker[i][0].name)
-                    worker[i][0].start()
+                        "Starting a new worker %s" % worker[0].name)
+                    worker[0].start()
         time.sleep(5)
 
 
 
 if __name__ == "__main__":
-    main()
+    main(args)

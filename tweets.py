@@ -92,7 +92,7 @@ class Tweets(object):
         return user_tweets
 
     @ensure_access_token
-    def get_follower_list(self, user_id):
+    def get_user_list(self, user_id, url=TWITTER_FOLLOWER_LIST):
         """
         return a list of user
         @todo for user who has over to much followers, maybe we should only
@@ -103,7 +103,7 @@ class Tweets(object):
         while True:
             res = self.session.get(
                 "%s?user_id=%s&cursor=%s" % (
-                    TWITTER_FOLLOWER_LIST,
+                    url,
                     user_id,
                     next_cursor),
                 headers={"Authorization": "Bearer %s" % self.access_token}
@@ -119,8 +119,8 @@ class Tweets(object):
                 logging.debug(
                     "fetched user: " +
                     " ".join([_["name"] for _ in res["users"]]))
-                # @todo remove this limit after test
-                if len(user_list) > 20:
+                # @todo set a proper value
+                if len(user_list) > 1000:
                     break
                 if res["next_cursor"] <= 0:
                     break
@@ -129,14 +129,6 @@ class Tweets(object):
         logging.info("fetch %s followers from user %s" % (len(user_list),
                                                           user_id))
         return user_list
-
-    @ensure_access_token
-    def get_friends_list(self, user_id):
-        res = self.session.get(
-            "%s?user_id=%s" % (TWITTER_FRIENDS_LIST,
-                               user_id),
-            headers={"Authorization": "Bearer %s" % self.access_token})
-        return res.json()
 
 
 if __name__ == "__main__":

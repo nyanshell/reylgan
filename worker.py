@@ -54,9 +54,12 @@ class Worker(threading.Thread):
         logging.info(
             "pushing %d items to collection %s." % (len(data), collect))
         try:
+            assert len(data)
             self.db[collect].insert(data, continue_on_error=True)
-        except  DuplicateKeyError as err:
+        except DuplicateKeyError as err:
             logging.warning(err)
+        except AssertionError as err:
+            logging.warning("data is empty")
 
     def run(self):
         tweets = Tweets()
@@ -70,8 +73,10 @@ class Worker(threading.Thread):
             """
             self._push_to_db(tweets.get_user_timeline(user_id, count=50),
                              "tweets")
-            self._push_to_db(tweets.get_follower_list(user_id), "users")
-            # self._push_to_db(tweets.get_friends_list(user_id), "users")
+            self._push_to_db(tweets.get_user_list(user_id), "users")
+            self._push_to_db(tweets.get_user_list(user_id),
+                             "users",
+                             url=TWITTER_FRIENDS_LIST)
 
             time.sleep(CRAWLER_COLDDOWN_TIME)
             self.queue.put(user_id)
