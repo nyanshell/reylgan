@@ -22,6 +22,7 @@ if sys.version_info.major > 2:
 else:
     text_type = unicode
 
+
 class RedisQueueSet(object):
 
     def __init__(self):
@@ -55,9 +56,12 @@ class Worker(threading.Thread):
             "pushing %d items to collection %s." % (len(data), collect))
         try:
             assert len(data)
-            self.db[collect].insert(data, continue_on_error=True)
-        except DuplicateKeyError as err:
-            logging.warning(err)
+            bulk = self.db[collect].initialize_ordered_bulk_op()
+            for item in data:
+                bulk.find(
+                    {"id": item["id"]}).upsert().update(
+                    {"$set": item})
+            bulk.execute()
         except AssertionError as err:
             logging.warning("data is empty")
 
@@ -74,9 +78,9 @@ class Worker(threading.Thread):
             self._push_to_db(tweets.get_user_timeline(user_id, count=50),
                              "tweets")
             self._push_to_db(tweets.get_user_list(user_id), "users")
-            self._push_to_db(tweets.get_user_list(user_id),
-                             "users",
-                             url=TWITTER_FRIENDS_LIST)
+            self._push_to_db(tweets.get_user_list(user_id,
+                                                  url=TWITTER_FRIENDS_LIST),
+                             "users")
 
             time.sleep(CRAWLER_COLDDOWN_TIME)
             self.queue.put(user_id)
@@ -108,7 +112,6 @@ class Analyzer(threading.Thread):
                  else text.decode('utf-8')))
             # normal chinese character range [19968, 40908]
             cnt = sum([1 for _ in s if 19968 <= ord(_) <= 40908])
-            # logging.debug(" ".join([text, s, str(cnt), str(len(text))]))
             return cnt/float(len(text))
 
         ans = 0

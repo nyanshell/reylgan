@@ -51,7 +51,7 @@ def main(args):
         logging.info("add %s crawlers." % args.worker)
 
     if args.analyzer:
-        workers.extend([(Analyzer(), Analyzer) for _ in
+        workers.extend([[Analyzer(), Analyzer] for _ in
                         range(0, int(args.analyzer))])
         logging.info("add %s analyzers." % args.analyzer)
 
