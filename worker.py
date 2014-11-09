@@ -12,6 +12,7 @@ import sys
 
 import pymongo
 import redis
+import arrow
 from pymongo.errors import DuplicateKeyError
 
 from tweets import Tweets
@@ -125,44 +126,91 @@ class Analyzer(threading.Thread):
         logging.debug("chinese user confidence: %s" % ans)
         return True if ans >= rate else False
 
+    @staticmethod
+    def compute_average_tweets(tweets, rate=1.0, time_window=14):
+        current_time = time.time()
+        cnt = 0
+        for tweet in iter(tweets):
+            created_at = arrow.Arrow.strptime(
+                tweet["created_at"],
+                "%a %b %d %H:%M:%S %z %Y").timestamp
+            if created_at >= current_time - time_window*24*3600:
+                cnt += 1
+        logging.debug("user %s active rate %s" % (
+                tweets[0]["user"]["id"], cnt/float(time_window)))
+        return True if cnt/float(time_window) >= rate else False
+
+    def find_active_zh_user(self, tweets):
+        """
+        average tweets > 1 in a month 
+        """
+        cursor = self.db["users"].find(
+            {"is_zh_user": True}).sort("followers_count",
+                                       pymongo.DESCENDING)
+        for user in cursor:
+            recent_tweets = self.db["tweets"].find(
+                {"id": user["id"]}).limit(100)
+
+            if recent_tweets.count() < 50:
+                recent_tweets = tweets.get_user_timeline(
+                    user["id"], count=100, max_collect=100)
+            else:
+                logging.debug(
+                    "fetch recent %s tweets of user %s" % (
+                        recent_tweets.count(),
+                        user["id"]))
+                recent_tweets = [_ for _ in recent_tweets]
+
+            if len(recent_tweets) > 14 and \
+                    self.compute_average_tweets(recent_tweets):
+                self.db["users"].update(
+                    {"id": user["id"]},
+                    {"$set": {"is_active_user": True}})
+
+
+    def find_new_zh_user(self, tweets):
+        logging.info("%s user_id in queue" % self.queue.size())
+        cursor = self.db["users"].find(
+            {"is_zh_user": {"$ne": False}}).sort("followers_count",
+                                                 pymongo.DESCENDING)
+        for user in cursor:
+            if "is_zh_user" in user:
+                if self.queue.put(user["id"]):
+                    logging.info(
+                        "put new user %s to queue." % user["id"])
+                else:
+                    logging.debug(
+                        "user %s already in queue." % user["id"])
+            else:
+                recent_tweets = self.db["tweets"].find(
+                    {"id": user["id"]}).limit(100)
+
+                if recent_tweets.count() < 50:
+                    recent_tweets = tweets.get_user_timeline(
+                        user["id"], count=100, max_collect=100)
+                else:
+                    logging.debug(
+                        "fetch recent %s tweets of user %s" % (
+                            recent_tweets.count(),
+                            user["id"]))
+                    recent_tweets = [_ for _ in recent_tweets]
+
+                result = True if len(recent_tweets) >= 50 \
+                    and self.detect_chinese(recent_tweets) \
+                    else False
+                logging.debug(
+                    "user %s detect result: %s" % (user["id"],
+                                                   result))
+                self.db["users"].update(
+                    {"id": user["id"]},
+                    {"$set": {"is_zh_user": result}})
+
+
     def run(self):
         logging.info("analyzer started")
         tweets = Tweets()
         while True:
-            logging.info("%s user_id in queue" % self.queue.size())
-            cursor = self.db["users"].find(
-                {"is_zh_user": {"$ne": False}}).sort("followers_count",
-                                                     pymongo.DESCENDING)
-            for user in cursor:
-                if "is_zh_user" in user:
-                    if self.queue.put(user["id"]):
-                        logging.info(
-                            "put new user %s to queue." % user["id"])
-                    else:
-                        logging.debug(
-                            "user %s already in queue." % user["id"])
-                else:
-                    recent_tweets = self.db["tweets"].find(
-                        {"id": user["id"]}).limit(100)
-
-                    if recent_tweets.count() < 50:
-                        recent_tweets = tweets.get_user_timeline(
-                            user["id"], count=100, max_collect=100)
-                    else:
-                        logging.debug(
-                        "fetch recent %s tweets of user %s" % (
-                            recent_tweets.count(),
-                            user["id"]))
-                        recent_tweets = [_ for _ in recent_tweets]
-                    result = True if len(recent_tweets) >= 50 \
-                             and self.detect_chinese(recent_tweets) \
-                             else False
-                    logging.debug(
-                        "user %s detect result: %s" % (user["id"],
-                                                       result))
-                    self.db["users"].update(
-                        {"id": user["id"]},
-                        {"$set": {"is_zh_user": result}})
-
+            self.find_new_zh_user(tweets)
+            self.find_active_zh_user(tweets)
             logging.info("sleep a while")
             time.sleep(30)

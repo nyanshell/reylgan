@@ -55,8 +55,8 @@ def test_redis():
 
 if __name__ == "__main__":
     # test_tweet_fetch()
-    test_crawler()
-    # test_analyzer()
+    # test_crawler()
+    test_analyzer()
     # test_irrelevant_sub_regex()
     # test_chinese_detect()
     # test_redis()

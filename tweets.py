@@ -77,7 +77,7 @@ class Tweets(object):
                 res = res.json()
                 if len(res):
                     user_tweets.extend(res)
-                    print ([it["text"] for it in res])
+                    # print ([it["text"] for it in res])
                     if len(user_tweets) >= max_collect:
                         break
                     else:
