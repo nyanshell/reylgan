@@ -46,7 +46,7 @@ def main(args):
                         level=log_level)
     workers = []
     if args.worker:
-        workers.extend([(Worker(), Worker) for _ in
+        workers.extend([[Worker(), Worker] for _ in
                         range(0, int(args.worker))])
         logging.info("add %s crawlers." % args.worker)
 

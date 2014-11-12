@@ -163,6 +163,7 @@ class Analyzer(threading.Thread):
 
             if len(recent_tweets) > 14 and \
                     self.compute_average_tweets(recent_tweets):
+                logging.debug("user %s is a active user." % user["id"])
                 self.db["users"].update(
                     {"id": user["id"]},
                     {"$set": {"is_active_user": True}})
