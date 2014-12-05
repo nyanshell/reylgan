@@ -69,6 +69,10 @@ class Worker(threading.Thread):
     def run(self):
         tweets = Tweets()
         while True:
+            if not self.queue.size():
+                logging.warning("queue is empty")
+                time.sleep(CRAWLER_COLDDOWN_TIME)
+                continue
             user_id = self.queue.pop()
             logging.info("fetching user %s." % user_id)
             """
