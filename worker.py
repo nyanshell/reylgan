@@ -123,9 +123,9 @@ class Analyzer(threading.Thread):
         assert len(tweets)
         for tweet in iter(tweets):
             # zh-cn/zh-tw
-            if "zh" in tweet['lang']: ans += 1.0
+            if "zh" in tweet.get('lang', ''): ans += 1.0
             # fix twitter's own language detect
-            elif tweet['lang'] == 'ja': ans += detect(tweet['text'])
+            elif tweet.get('lang', '') == 'ja': ans += detect(tweet['text'])
         ans /= float(len(tweets))
         logging.debug("chinese user confidence: %s" % ans)
         return True if ans >= rate else False
